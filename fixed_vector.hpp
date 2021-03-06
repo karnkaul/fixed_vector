@@ -67,14 +67,12 @@ class fixed_vector {
 	constexpr std::size_t capacity() const noexcept;
 
   private:
-	using storage_t = std::array<std::byte, sizeof(T) * N>;
+	using storage_t = std::array<std::aligned_storage_t<sizeof(T), alignof(T)>, N>;
 
-	constexpr std::byte* byte_at(std::size_t idx) noexcept;
-	constexpr std::byte const* byte_at(std::size_t idx) const noexcept;
 	constexpr void clone(fixed_vector&& rhs) noexcept;
 	constexpr void clone(fixed_vector const& rhs) noexcept;
 
-	alignas(std::max_align_t) storage_t m_bytes;
+	storage_t m_storage;
 	std::size_t m_size = 0;
 
 	friend struct iterator;
@@ -99,11 +97,11 @@ struct fixed_vector<T, N>::iterator {
 		return std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
 	}
 	constexpr iterator& operator++() noexcept {
-		index += sizeof(T);
+		++index;
 		return *this;
 	}
 	constexpr iterator& operator--() noexcept {
-		index -= sizeof(T);
+		--index;
 		return *this;
 	}
 	constexpr friend bool operator==(iterator const& lhs, iterator const& rhs) noexcept {
@@ -138,11 +136,11 @@ struct fixed_vector<T, N>::const_iterator {
 		return std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
 	}
 	constexpr const_iterator& operator++() noexcept {
-		index += sizeof(T);
+		++index;
 		return *this;
 	}
 	constexpr const_iterator& operator--() noexcept {
-		index -= sizeof(T);
+		--index;
 		return *this;
 	}
 	constexpr friend bool operator==(const_iterator const& lhs, const_iterator const& rhs) noexcept {
@@ -222,8 +220,8 @@ template <typename T, std::size_t N>
 template <typename... Args>
 constexpr typename fixed_vector<T, N>::reference fixed_vector<T, N>::emplace_back(Args&&... args) {
 	assert(size() < capacity());
-	std::byte* byte = byte_at(m_size++);
-	T* t = new (byte) T(std::forward<Args>(args)...);
+	T* t = new (&m_storage[m_size]) T(std::forward<Args>(args)...);
+	++m_size;
 	return *t;
 }
 template <typename T, std::size_t N>
@@ -268,14 +266,12 @@ constexpr typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::back(
 template <typename T, std::size_t N>
 constexpr typename fixed_vector<T, N>::reference fixed_vector<T, N>::at(std::size_t index) noexcept {
 	assert(index < size());
-	std::byte* byte = byte_at(index);
-	return *std::launder(reinterpret_cast<pointer>(byte));
+	return *std::launder(reinterpret_cast<pointer>(&m_storage[index]));
 }
 template <typename T, std::size_t N>
 constexpr typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::at(std::size_t index) const noexcept {
 	assert(index < size());
-	std::byte const* byte = byte_at(index);
-	return *std::launder(reinterpret_cast<const_pointer>(byte));
+	return *std::launder(reinterpret_cast<const_pointer>(&m_storage[index]));
 }
 template <typename T, std::size_t N>
 constexpr typename fixed_vector<T, N>::pointer fixed_vector<T, N>::data() noexcept {
@@ -295,19 +291,19 @@ constexpr typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::opera
 }
 template <typename T, std::size_t N>
 constexpr typename fixed_vector<T, N>::iterator fixed_vector<T, N>::begin() noexcept {
-	return iterator(m_bytes, 0);
+	return iterator(m_storage, 0);
 }
 template <typename T, std::size_t N>
 constexpr typename fixed_vector<T, N>::iterator fixed_vector<T, N>::end() noexcept {
-	return iterator(m_bytes, size() * sizeof(T));
+	return iterator(m_storage, size());
 }
 template <typename T, std::size_t N>
 constexpr typename fixed_vector<T, N>::const_iterator fixed_vector<T, N>::begin() const noexcept {
-	return const_iterator(m_bytes, 0);
+	return const_iterator(m_storage, 0);
 }
 template <typename T, std::size_t N>
 constexpr typename fixed_vector<T, N>::const_iterator fixed_vector<T, N>::end() const noexcept {
-	return const_iterator(m_bytes, size() * sizeof(T));
+	return const_iterator(m_storage, size());
 }
 template <typename T, std::size_t N>
 constexpr bool fixed_vector<T, N>::empty() const noexcept {
@@ -322,17 +318,9 @@ constexpr std::size_t fixed_vector<T, N>::capacity() const noexcept {
 	return max_size();
 }
 template <typename T, std::size_t N>
-constexpr std::byte* fixed_vector<T, N>::byte_at(std::size_t idx) noexcept {
-	return &m_bytes[idx * sizeof(T)];
-}
-template <typename T, std::size_t N>
-constexpr std::byte const* fixed_vector<T, N>::byte_at(std::size_t idx) const noexcept {
-	return &m_bytes[idx * sizeof(T)];
-}
-template <typename T, std::size_t N>
 constexpr void fixed_vector<T, N>::clone(fixed_vector&& rhs) noexcept {
 	if constexpr (std::is_trivial_v<T>) {
-		std::memcpy(m_bytes.data(), rhs.m_bytes.data(), rhs.size() * sizeof(T));
+		std::memcpy(m_storage.data(), rhs.m_storage.data(), rhs.size() * sizeof(T));
 		m_size = rhs.m_size;
 	} else {
 		for (T& t : rhs) {
@@ -343,7 +331,7 @@ constexpr void fixed_vector<T, N>::clone(fixed_vector&& rhs) noexcept {
 template <typename T, std::size_t N>
 constexpr void fixed_vector<T, N>::clone(fixed_vector const& rhs) noexcept {
 	if constexpr (std::is_trivial_v<T>) {
-		std::memcpy(m_bytes.data(), rhs.m_bytes.data(), rhs.size() * sizeof(T));
+		std::memcpy(m_storage.data(), rhs.m_storage.data(), rhs.size() * sizeof(T));
 		m_size = rhs.m_size;
 	} else {
 		for (T const& t : rhs) {
