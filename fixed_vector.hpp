@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <new>
 #include <type_traits>
 
@@ -13,6 +14,8 @@ namespace kt {
 ///
 /// \brief vector-like container using bytearray as storage
 /// Refer to std::vector for API documentation
+/// Supports: insertion, deletion (pop only), random access iteration, ranged for
+/// Limitations: insert(), erase()
 ///
 template <typename T, std::size_t N>
 class fixed_vector {
@@ -30,47 +33,50 @@ class fixed_vector {
 
 	static constexpr std::size_t max_size() noexcept;
 
-	constexpr fixed_vector() = default;
-	constexpr explicit fixed_vector(std::size_t count, T const& t = T{}) noexcept;
-	constexpr fixed_vector(std::initializer_list<T> init) noexcept;
-	constexpr fixed_vector(fixed_vector&&) noexcept;
-	constexpr fixed_vector(fixed_vector const&) noexcept;
-	constexpr fixed_vector& operator=(fixed_vector&&) noexcept;
-	constexpr fixed_vector& operator=(fixed_vector const&) noexcept;
+	fixed_vector() = default;
+	explicit fixed_vector(std::size_t count, T const& t = T{}) noexcept;
+	fixed_vector(std::initializer_list<T> init) noexcept;
+	fixed_vector(fixed_vector&&) noexcept;
+	fixed_vector(fixed_vector const&) noexcept;
+	fixed_vector& operator=(fixed_vector&&) noexcept;
+	fixed_vector& operator=(fixed_vector const&) noexcept;
 	~fixed_vector() noexcept;
 
-	constexpr void push_back(value_type&& t);
-	constexpr void push_back(value_type const& t);
+	void push_back(value_type&& t);
+	void push_back(value_type const& t);
 	template <typename... Args>
-	constexpr reference emplace_back(Args&&... args);
-	constexpr void pop_back() noexcept;
-	constexpr void clear() noexcept;
+	reference emplace_back(Args&&... args);
+	void pop_back() noexcept;
+	void clear() noexcept;
 
-	constexpr reference front() noexcept;
-	constexpr const_reference front() const noexcept;
-	constexpr reference back() noexcept;
-	constexpr const_reference back() const noexcept;
-	constexpr reference at(std::size_t index) noexcept;
-	constexpr const_reference at(std::size_t index) const noexcept;
-	constexpr pointer data() noexcept;
-	constexpr const_pointer data() const noexcept;
+	reference front() noexcept;
+	const_reference front() const noexcept;
+	reference back() noexcept;
+	const_reference back() const noexcept;
+	reference at(std::size_t index) noexcept;
+	const_reference at(std::size_t index) const noexcept;
+	pointer data() noexcept;
+	const_pointer data() const noexcept;
 
-	constexpr reference operator[](std::size_t index) noexcept;
-	constexpr const_reference operator[](std::size_t index) const noexcept;
-	constexpr iterator begin() noexcept;
-	constexpr iterator end() noexcept;
-	constexpr const_iterator begin() const noexcept;
-	constexpr const_iterator end() const noexcept;
+	reference operator[](std::size_t index) noexcept;
+	const_reference operator[](std::size_t index) const noexcept;
+	iterator begin() noexcept;
+	iterator end() noexcept;
+	const_iterator cbegin() const noexcept;
+	const_iterator cend() const noexcept;
+	const_iterator begin() const noexcept;
+	const_iterator end() const noexcept;
 
-	constexpr bool empty() const noexcept;
-	constexpr std::size_t size() const noexcept;
+	bool empty() const noexcept;
+	std::size_t size() const noexcept;
 	constexpr std::size_t capacity() const noexcept;
+	bool has_space() const noexcept;
 
   private:
 	using storage_t = std::array<std::aligned_storage_t<sizeof(T), alignof(T)>, N>;
 
-	constexpr void clone(fixed_vector&& rhs) noexcept;
-	constexpr void clone(fixed_vector const& rhs) noexcept;
+	void clone(fixed_vector&& rhs) noexcept;
+	void clone(fixed_vector const& rhs) noexcept;
 
 	storage_t m_storage;
 	std::size_t m_size = 0;
@@ -83,36 +89,77 @@ class fixed_vector {
 
 template <typename T, std::size_t N>
 struct fixed_vector<T, N>::iterator {
-	using type = T;
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type = T;
+	using difference_type = std::ptrdiff_t;
 	using pointer = T*;
 	using reference = T&;
 	using storage_t = fixed_vector<T, N>::storage_t;
 
-	constexpr iterator() = default;
+	iterator() = default;
 
-	constexpr reference operator*() noexcept {
+	reference operator*() noexcept {
 		return *std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
 	}
-	constexpr pointer operator->() noexcept {
+	pointer operator->() noexcept {
 		return std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
 	}
-	constexpr iterator& operator++() noexcept {
+	iterator& operator++() noexcept {
 		++index;
 		return *this;
 	}
-	constexpr iterator& operator--() noexcept {
+	iterator& operator--() noexcept {
 		--index;
 		return *this;
 	}
-	constexpr friend bool operator==(iterator const& lhs, iterator const& rhs) noexcept {
+	iterator operator++(int) noexcept {
+		return iterator(*storage, index++);
+	}
+	iterator operator--(int) noexcept {
+		return iterator(*storage, index--);
+	}
+	iterator& operator+=(difference_type i) noexcept {
+		index += i;
+		return *this;
+	}
+	iterator operator+(difference_type i) noexcept {
+		return iterator(*storage, index + i);
+	}
+	iterator& operator-=(difference_type i) noexcept {
+		index -= i;
+		return *this;
+	}
+	iterator operator-(difference_type i) noexcept {
+		return iterator(*storage, index - i);
+	}
+	difference_type operator+(iterator const& rhs) noexcept {
+		return static_cast<difference_type>(index + rhs.index);
+	}
+	difference_type operator-(iterator const& rhs) noexcept {
+		return static_cast<difference_type>(index - rhs.index);
+	}
+
+	friend bool operator==(iterator lhs, iterator rhs) noexcept {
 		return lhs.storage == rhs.storage && lhs.index == rhs.index;
 	}
-	constexpr friend bool operator!=(iterator const& lhs, iterator const& rhs) noexcept {
+	friend bool operator!=(iterator lhs, iterator rhs) noexcept {
 		return !(lhs == rhs);
+	}
+	friend bool operator<(iterator lhs, iterator rhs) noexcept {
+		return lhs.index < rhs.index;
+	}
+	friend bool operator>(iterator lhs, iterator rhs) noexcept {
+		return lhs.index > rhs.index;
+	}
+	friend bool operator<=(iterator lhs, iterator rhs) noexcept {
+		return lhs.index <= rhs.index;
+	}
+	friend bool operator>=(iterator lhs, iterator rhs) noexcept {
+		return lhs.index >= rhs.index;
 	}
 
   private:
-	constexpr iterator(storage_t& storage, std::size_t index) noexcept : storage(&storage), index(index) {
+	iterator(storage_t& storage, std::size_t index) noexcept : storage(&storage), index(index) {
 	}
 
 	storage_t* storage = nullptr;
@@ -122,36 +169,77 @@ struct fixed_vector<T, N>::iterator {
 };
 template <typename T, std::size_t N>
 struct fixed_vector<T, N>::const_iterator {
-	using type = T;
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type = T;
+	using difference_type = std::ptrdiff_t;
 	using pointer = T const*;
 	using reference = T const&;
 	using storage_t = fixed_vector<T, N>::storage_t;
 
-	constexpr const_iterator() = default;
+	const_iterator() = default;
 
-	constexpr reference operator*() const noexcept {
+	reference operator*() const noexcept {
 		return *std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
 	}
-	constexpr pointer operator->() const noexcept {
+	pointer operator->() const noexcept {
 		return std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
 	}
-	constexpr const_iterator& operator++() noexcept {
+	const_iterator& operator++() noexcept {
 		++index;
 		return *this;
 	}
-	constexpr const_iterator& operator--() noexcept {
+	const_iterator& operator--() noexcept {
 		--index;
 		return *this;
 	}
-	constexpr friend bool operator==(const_iterator const& lhs, const_iterator const& rhs) noexcept {
+	const_iterator operator++(int) noexcept {
+		return const_iterator(*storage, index++);
+	}
+	const_iterator operator--(int) noexcept {
+		return const_iterator(*storage, index--);
+	}
+	const_iterator& operator+=(difference_type i) noexcept {
+		index += i;
+		return *this;
+	}
+	const_iterator operator+(difference_type i) noexcept {
+		return const_iterator(*storage, index + i);
+	}
+	const_iterator& operator-=(difference_type i) noexcept {
+		index -= i;
+		return *this;
+	}
+	const_iterator operator-(difference_type i) noexcept {
+		return const_iterator(*storage, index - i);
+	}
+	difference_type operator+(const_iterator const& rhs) noexcept {
+		return static_cast<difference_type>(index + rhs.index);
+	}
+	difference_type operator-(const_iterator const& rhs) noexcept {
+		return static_cast<difference_type>(index - rhs.index);
+	}
+
+	friend bool operator==(const_iterator lhs, const_iterator rhs) noexcept {
 		return lhs.storage == rhs.storage && lhs.index == rhs.index;
 	}
-	constexpr friend bool operator!=(const_iterator const& lhs, const_iterator const& rhs) noexcept {
+	friend bool operator!=(const_iterator lhs, const_iterator rhs) noexcept {
 		return !(lhs == rhs);
+	}
+	friend bool operator<(const_iterator lhs, const_iterator rhs) noexcept {
+		return lhs.index < rhs.index;
+	}
+	friend bool operator>(const_iterator lhs, const_iterator rhs) noexcept {
+		return lhs.index > rhs.index;
+	}
+	friend bool operator<=(const_iterator lhs, const_iterator rhs) noexcept {
+		return lhs.index <= rhs.index;
+	}
+	friend bool operator>=(const_iterator lhs, const_iterator rhs) noexcept {
+		return lhs.index >= rhs.index;
 	}
 
   private:
-	constexpr const_iterator(storage_t const& storage, std::size_t index) noexcept : storage(&storage), index(index) {
+	const_iterator(storage_t const& storage, std::size_t index) noexcept : storage(&storage), index(index) {
 	}
 
 	storage_t const* storage = nullptr;
@@ -161,30 +249,30 @@ struct fixed_vector<T, N>::const_iterator {
 };
 
 template <typename T, std::size_t N>
-constexpr fixed_vector<T, N>::fixed_vector(std::size_t count, T const& t) noexcept {
+fixed_vector<T, N>::fixed_vector(std::size_t count, T const& t) noexcept {
 	assert(count <= capacity());
 	for (std::size_t i = 0; i < count; ++i) {
 		push_back(t);
 	}
 }
 template <typename T, std::size_t N>
-constexpr fixed_vector<T, N>::fixed_vector(std::initializer_list<T> init) noexcept {
+fixed_vector<T, N>::fixed_vector(std::initializer_list<T> init) noexcept {
 	assert(init.size() <= capacity());
 	for (T const& t : init) {
 		push_back(t);
 	}
 }
 template <typename T, std::size_t N>
-constexpr fixed_vector<T, N>::fixed_vector(fixed_vector&& rhs) noexcept {
+fixed_vector<T, N>::fixed_vector(fixed_vector&& rhs) noexcept {
 	clone(std::move(rhs));
 	rhs.clear();
 }
 template <typename T, std::size_t N>
-constexpr fixed_vector<T, N>::fixed_vector(fixed_vector const& rhs) noexcept {
+fixed_vector<T, N>::fixed_vector(fixed_vector const& rhs) noexcept {
 	clone(rhs);
 }
 template <typename T, std::size_t N>
-constexpr fixed_vector<T, N>& fixed_vector<T, N>::operator=(fixed_vector&& rhs) noexcept {
+fixed_vector<T, N>& fixed_vector<T, N>::operator=(fixed_vector&& rhs) noexcept {
 	if (&rhs != this) {
 		clear();
 		clone(std::move(rhs));
@@ -193,7 +281,7 @@ constexpr fixed_vector<T, N>& fixed_vector<T, N>::operator=(fixed_vector&& rhs) 
 	return *this;
 }
 template <typename T, std::size_t N>
-constexpr fixed_vector<T, N>& fixed_vector<T, N>::operator=(fixed_vector const& rhs) noexcept {
+fixed_vector<T, N>& fixed_vector<T, N>::operator=(fixed_vector const& rhs) noexcept {
 	if (&rhs != this) {
 		clear();
 		clone(rhs);
@@ -209,23 +297,23 @@ constexpr std::size_t fixed_vector<T, N>::max_size() noexcept {
 	return N;
 }
 template <typename T, std::size_t N>
-constexpr void fixed_vector<T, N>::push_back(T&& t) {
+void fixed_vector<T, N>::push_back(T&& t) {
 	emplace_back(std::move(t));
 }
 template <typename T, std::size_t N>
-constexpr void fixed_vector<T, N>::push_back(T const& t) {
+void fixed_vector<T, N>::push_back(T const& t) {
 	emplace_back(t);
 }
 template <typename T, std::size_t N>
 template <typename... Args>
-constexpr typename fixed_vector<T, N>::reference fixed_vector<T, N>::emplace_back(Args&&... args) {
-	assert(size() < capacity());
+typename fixed_vector<T, N>::reference fixed_vector<T, N>::emplace_back(Args&&... args) {
+	assert(has_space()); // size() == capacity()?
 	T* t = new (&m_storage[m_size]) T(std::forward<Args>(args)...);
 	++m_size;
 	return *t;
 }
 template <typename T, std::size_t N>
-constexpr void fixed_vector<T, N>::pop_back() noexcept {
+void fixed_vector<T, N>::pop_back() noexcept {
 	assert(!empty());
 	if constexpr (!std::is_trivial_v<T>) {
 		T* t = &back();
@@ -234,7 +322,7 @@ constexpr void fixed_vector<T, N>::pop_back() noexcept {
 	--m_size;
 }
 template <typename T, std::size_t N>
-constexpr void fixed_vector<T, N>::clear() noexcept {
+void fixed_vector<T, N>::clear() noexcept {
 	if constexpr (std::is_trivial_v<T>) {
 		m_size = 0;
 	} else {
@@ -244,73 +332,81 @@ constexpr void fixed_vector<T, N>::clear() noexcept {
 	}
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::reference fixed_vector<T, N>::front() noexcept {
+typename fixed_vector<T, N>::reference fixed_vector<T, N>::front() noexcept {
 	assert(!empty());
 	return at(0);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::front() const noexcept {
+typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::front() const noexcept {
 	assert(!empty());
 	return at(0);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::reference fixed_vector<T, N>::back() noexcept {
+typename fixed_vector<T, N>::reference fixed_vector<T, N>::back() noexcept {
 	assert(!empty());
 	return at(m_size - 1);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::back() const noexcept {
+typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::back() const noexcept {
 	assert(!empty());
 	return at(m_size - 1);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::reference fixed_vector<T, N>::at(std::size_t index) noexcept {
+typename fixed_vector<T, N>::reference fixed_vector<T, N>::at(std::size_t index) noexcept {
 	assert(index < size());
 	return *std::launder(reinterpret_cast<pointer>(&m_storage[index]));
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::at(std::size_t index) const noexcept {
+typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::at(std::size_t index) const noexcept {
 	assert(index < size());
 	return *std::launder(reinterpret_cast<const_pointer>(&m_storage[index]));
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::pointer fixed_vector<T, N>::data() noexcept {
+typename fixed_vector<T, N>::pointer fixed_vector<T, N>::data() noexcept {
 	return empty() ? nullptr : &at(0);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::const_pointer fixed_vector<T, N>::data() const noexcept {
+typename fixed_vector<T, N>::const_pointer fixed_vector<T, N>::data() const noexcept {
 	return empty() ? nullptr : &at(0);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::reference fixed_vector<T, N>::operator[](std::size_t index) noexcept {
+typename fixed_vector<T, N>::reference fixed_vector<T, N>::operator[](std::size_t index) noexcept {
 	return at(index);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::operator[](std::size_t index) const noexcept {
+typename fixed_vector<T, N>::const_reference fixed_vector<T, N>::operator[](std::size_t index) const noexcept {
 	return at(index);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::iterator fixed_vector<T, N>::begin() noexcept {
+typename fixed_vector<T, N>::iterator fixed_vector<T, N>::begin() noexcept {
 	return iterator(m_storage, 0);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::iterator fixed_vector<T, N>::end() noexcept {
+typename fixed_vector<T, N>::iterator fixed_vector<T, N>::end() noexcept {
 	return iterator(m_storage, size());
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::const_iterator fixed_vector<T, N>::begin() const noexcept {
+typename fixed_vector<T, N>::const_iterator fixed_vector<T, N>::begin() const noexcept {
 	return const_iterator(m_storage, 0);
 }
 template <typename T, std::size_t N>
-constexpr typename fixed_vector<T, N>::const_iterator fixed_vector<T, N>::end() const noexcept {
+typename fixed_vector<T, N>::const_iterator fixed_vector<T, N>::end() const noexcept {
 	return const_iterator(m_storage, size());
 }
 template <typename T, std::size_t N>
-constexpr bool fixed_vector<T, N>::empty() const noexcept {
+typename fixed_vector<T, N>::const_iterator fixed_vector<T, N>::cbegin() const noexcept {
+	return const_iterator(m_storage, 0);
+}
+template <typename T, std::size_t N>
+typename fixed_vector<T, N>::const_iterator fixed_vector<T, N>::cend() const noexcept {
+	return const_iterator(m_storage, size());
+}
+template <typename T, std::size_t N>
+bool fixed_vector<T, N>::empty() const noexcept {
 	return size() == 0;
 }
 template <typename T, std::size_t N>
-constexpr std::size_t fixed_vector<T, N>::size() const noexcept {
+std::size_t fixed_vector<T, N>::size() const noexcept {
 	return m_size;
 }
 template <typename T, std::size_t N>
@@ -318,7 +414,11 @@ constexpr std::size_t fixed_vector<T, N>::capacity() const noexcept {
 	return max_size();
 }
 template <typename T, std::size_t N>
-constexpr void fixed_vector<T, N>::clone(fixed_vector&& rhs) noexcept {
+bool fixed_vector<T, N>::has_space() const noexcept {
+	return m_size < N;
+}
+template <typename T, std::size_t N>
+void fixed_vector<T, N>::clone(fixed_vector&& rhs) noexcept {
 	if constexpr (std::is_trivial_v<T>) {
 		std::memcpy(m_storage.data(), rhs.m_storage.data(), rhs.size() * sizeof(T));
 		m_size = rhs.m_size;
@@ -329,7 +429,7 @@ constexpr void fixed_vector<T, N>::clone(fixed_vector&& rhs) noexcept {
 	}
 }
 template <typename T, std::size_t N>
-constexpr void fixed_vector<T, N>::clone(fixed_vector const& rhs) noexcept {
+void fixed_vector<T, N>::clone(fixed_vector const& rhs) noexcept {
 	if constexpr (std::is_trivial_v<T>) {
 		std::memcpy(m_storage.data(), rhs.m_storage.data(), rhs.size() * sizeof(T));
 		m_size = rhs.m_size;
