@@ -98,12 +98,8 @@ struct fixed_vector<T, N>::iterator {
 
 	iterator() = default;
 
-	reference operator*() noexcept {
-		return *std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
-	}
-	pointer operator->() noexcept {
-		return std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
-	}
+	reference operator*() noexcept { return *std::launder(reinterpret_cast<pointer>(&(*storage)[index])); }
+	pointer operator->() noexcept { return std::launder(reinterpret_cast<pointer>(&(*storage)[index])); }
 	iterator& operator++() noexcept {
 		++index;
 		return *this;
@@ -112,55 +108,30 @@ struct fixed_vector<T, N>::iterator {
 		--index;
 		return *this;
 	}
-	iterator operator++(int) noexcept {
-		return iterator(*storage, index++);
-	}
-	iterator operator--(int) noexcept {
-		return iterator(*storage, index--);
-	}
+	iterator operator++(int) noexcept { return iterator(*storage, index++); }
+	iterator operator--(int) noexcept { return iterator(*storage, index--); }
 	iterator& operator+=(difference_type i) noexcept {
 		index += i;
 		return *this;
 	}
-	iterator operator+(difference_type i) noexcept {
-		return iterator(*storage, index + i);
-	}
+	iterator operator+(difference_type i) noexcept { return iterator(*storage, index + i); }
 	iterator& operator-=(difference_type i) noexcept {
 		index -= i;
 		return *this;
 	}
-	iterator operator-(difference_type i) noexcept {
-		return iterator(*storage, index - i);
-	}
-	difference_type operator+(iterator const& rhs) noexcept {
-		return static_cast<difference_type>(index + rhs.index);
-	}
-	difference_type operator-(iterator const& rhs) noexcept {
-		return static_cast<difference_type>(index - rhs.index);
-	}
+	iterator operator-(difference_type i) noexcept { return iterator(*storage, index - i); }
+	difference_type operator+(iterator const& rhs) noexcept { return static_cast<difference_type>(index + rhs.index); }
+	difference_type operator-(iterator const& rhs) noexcept { return static_cast<difference_type>(index - rhs.index); }
 
-	friend bool operator==(iterator lhs, iterator rhs) noexcept {
-		return lhs.storage == rhs.storage && lhs.index == rhs.index;
-	}
-	friend bool operator!=(iterator lhs, iterator rhs) noexcept {
-		return !(lhs == rhs);
-	}
-	friend bool operator<(iterator lhs, iterator rhs) noexcept {
-		return lhs.index < rhs.index;
-	}
-	friend bool operator>(iterator lhs, iterator rhs) noexcept {
-		return lhs.index > rhs.index;
-	}
-	friend bool operator<=(iterator lhs, iterator rhs) noexcept {
-		return lhs.index <= rhs.index;
-	}
-	friend bool operator>=(iterator lhs, iterator rhs) noexcept {
-		return lhs.index >= rhs.index;
-	}
+	friend bool operator==(iterator lhs, iterator rhs) noexcept { return lhs.storage == rhs.storage && lhs.index == rhs.index; }
+	friend bool operator!=(iterator lhs, iterator rhs) noexcept { return !(lhs == rhs); }
+	friend bool operator<(iterator lhs, iterator rhs) noexcept { return lhs.index < rhs.index; }
+	friend bool operator>(iterator lhs, iterator rhs) noexcept { return lhs.index > rhs.index; }
+	friend bool operator<=(iterator lhs, iterator rhs) noexcept { return lhs.index <= rhs.index; }
+	friend bool operator>=(iterator lhs, iterator rhs) noexcept { return lhs.index >= rhs.index; }
 
   private:
-	iterator(storage_t& storage, std::size_t index) noexcept : storage(&storage), index(index) {
-	}
+	iterator(storage_t& storage, std::size_t index) noexcept : storage(&storage), index(index) {}
 
 	storage_t* storage = nullptr;
 	std::size_t index = 0;
@@ -178,12 +149,8 @@ struct fixed_vector<T, N>::const_iterator {
 
 	const_iterator() = default;
 
-	reference operator*() const noexcept {
-		return *std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
-	}
-	pointer operator->() const noexcept {
-		return std::launder(reinterpret_cast<pointer>(&(*storage)[index]));
-	}
+	reference operator*() const noexcept { return *std::launder(reinterpret_cast<pointer>(&(*storage)[index])); }
+	pointer operator->() const noexcept { return std::launder(reinterpret_cast<pointer>(&(*storage)[index])); }
 	const_iterator& operator++() noexcept {
 		++index;
 		return *this;
@@ -192,55 +159,30 @@ struct fixed_vector<T, N>::const_iterator {
 		--index;
 		return *this;
 	}
-	const_iterator operator++(int) noexcept {
-		return const_iterator(*storage, index++);
-	}
-	const_iterator operator--(int) noexcept {
-		return const_iterator(*storage, index--);
-	}
+	const_iterator operator++(int) noexcept { return const_iterator(*storage, index++); }
+	const_iterator operator--(int) noexcept { return const_iterator(*storage, index--); }
 	const_iterator& operator+=(difference_type i) noexcept {
 		index += i;
 		return *this;
 	}
-	const_iterator operator+(difference_type i) noexcept {
-		return const_iterator(*storage, index + i);
-	}
+	const_iterator operator+(difference_type i) noexcept { return const_iterator(*storage, index + i); }
 	const_iterator& operator-=(difference_type i) noexcept {
 		index -= i;
 		return *this;
 	}
-	const_iterator operator-(difference_type i) noexcept {
-		return const_iterator(*storage, index - i);
-	}
-	difference_type operator+(const_iterator const& rhs) noexcept {
-		return static_cast<difference_type>(index + rhs.index);
-	}
-	difference_type operator-(const_iterator const& rhs) noexcept {
-		return static_cast<difference_type>(index - rhs.index);
-	}
+	const_iterator operator-(difference_type i) noexcept { return const_iterator(*storage, index - i); }
+	difference_type operator+(const_iterator const& rhs) noexcept { return static_cast<difference_type>(index + rhs.index); }
+	difference_type operator-(const_iterator const& rhs) noexcept { return static_cast<difference_type>(index - rhs.index); }
 
-	friend bool operator==(const_iterator lhs, const_iterator rhs) noexcept {
-		return lhs.storage == rhs.storage && lhs.index == rhs.index;
-	}
-	friend bool operator!=(const_iterator lhs, const_iterator rhs) noexcept {
-		return !(lhs == rhs);
-	}
-	friend bool operator<(const_iterator lhs, const_iterator rhs) noexcept {
-		return lhs.index < rhs.index;
-	}
-	friend bool operator>(const_iterator lhs, const_iterator rhs) noexcept {
-		return lhs.index > rhs.index;
-	}
-	friend bool operator<=(const_iterator lhs, const_iterator rhs) noexcept {
-		return lhs.index <= rhs.index;
-	}
-	friend bool operator>=(const_iterator lhs, const_iterator rhs) noexcept {
-		return lhs.index >= rhs.index;
-	}
+	friend bool operator==(const_iterator lhs, const_iterator rhs) noexcept { return lhs.storage == rhs.storage && lhs.index == rhs.index; }
+	friend bool operator!=(const_iterator lhs, const_iterator rhs) noexcept { return !(lhs == rhs); }
+	friend bool operator<(const_iterator lhs, const_iterator rhs) noexcept { return lhs.index < rhs.index; }
+	friend bool operator>(const_iterator lhs, const_iterator rhs) noexcept { return lhs.index > rhs.index; }
+	friend bool operator<=(const_iterator lhs, const_iterator rhs) noexcept { return lhs.index <= rhs.index; }
+	friend bool operator>=(const_iterator lhs, const_iterator rhs) noexcept { return lhs.index >= rhs.index; }
 
   private:
-	const_iterator(storage_t const& storage, std::size_t index) noexcept : storage(&storage), index(index) {
-	}
+	const_iterator(storage_t const& storage, std::size_t index) noexcept : storage(&storage), index(index) {}
 
 	storage_t const* storage = nullptr;
 	std::size_t index = 0;
@@ -251,16 +193,12 @@ struct fixed_vector<T, N>::const_iterator {
 template <typename T, std::size_t N>
 fixed_vector<T, N>::fixed_vector(std::size_t count, T const& t) noexcept {
 	assert(count <= capacity());
-	for (std::size_t i = 0; i < count; ++i) {
-		push_back(t);
-	}
+	for (std::size_t i = 0; i < count; ++i) { push_back(t); }
 }
 template <typename T, std::size_t N>
 fixed_vector<T, N>::fixed_vector(std::initializer_list<T> init) noexcept {
 	assert(init.size() <= capacity());
-	for (T const& t : init) {
-		push_back(t);
-	}
+	for (T const& t : init) { push_back(t); }
 }
 template <typename T, std::size_t N>
 fixed_vector<T, N>::fixed_vector(fixed_vector&& rhs) noexcept {
@@ -326,9 +264,7 @@ void fixed_vector<T, N>::clear() noexcept {
 	if constexpr (std::is_trivial_v<T>) {
 		m_size = 0;
 	} else {
-		while (!empty()) {
-			pop_back();
-		}
+		while (!empty()) { pop_back(); }
 	}
 }
 template <typename T, std::size_t N>
@@ -423,9 +359,7 @@ void fixed_vector<T, N>::clone(fixed_vector&& rhs) noexcept {
 		std::memcpy(m_storage.data(), rhs.m_storage.data(), rhs.size() * sizeof(T));
 		m_size = rhs.m_size;
 	} else {
-		for (T& t : rhs) {
-			push_back(std::move(t));
-		}
+		for (T& t : rhs) { push_back(std::move(t)); }
 	}
 }
 template <typename T, std::size_t N>
@@ -434,9 +368,7 @@ void fixed_vector<T, N>::clone(fixed_vector const& rhs) noexcept {
 		std::memcpy(m_storage.data(), rhs.m_storage.data(), rhs.size() * sizeof(T));
 		m_size = rhs.m_size;
 	} else {
-		for (T const& t : rhs) {
-			push_back(t);
-		}
+		for (T const& t : rhs) { push_back(t); }
 	}
 }
 } // namespace kt
